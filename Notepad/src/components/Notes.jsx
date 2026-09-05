@@ -1,10 +1,5 @@
 function Notes() {
-  return (
-    <div>
-      <h2>Your Notes</h2>
-      <p>This is where your notes will be displayed.</p>
-    </div>
-  );
+  return <h2>Notes</h2>;
 }
 
 export default Notes;

@@ -1,10 +1,5 @@
-function Diary() {
-  return (
-    <div>
-      <h2>Your Diary</h2>
-      <p>This is where your diary entries will be displayed.</p>
-    </div>
-  );
+function Journal() {
+  return <h2>Journal</h2>;
 }
 
-export default Diary;
+export default Journal;
