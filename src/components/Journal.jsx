@@ -154,7 +154,7 @@ function Journal() {
 
   return (
     <section className="journal">
-      <div className="journal-header">
+      <div className="page-header">
         <h2>Journal</h2>
 
         <button type="button" onClick={handleNewEntry}>
@@ -162,8 +162,8 @@ function Journal() {
         </button>
       </div>
 
-      <div className="journal-content">
-        <aside className="journal-entries">
+      <div className="editor-layout">
+        <aside className="editor-sidebar">
           <h3>Entries</h3>
 
           {entries.length === 0 ? (
@@ -187,7 +187,7 @@ function Journal() {
           )}
         </aside>
 
-        <div className="journal-editor">
+        <div className="editor-content">
           {selectedEntryId ? (
             <>
               <input
@@ -211,7 +211,7 @@ function Journal() {
                 placeholder="Write about your day..."
               />
 
-              <div className="journal-actions">
+              <div className="editor-actions">
                 <button
                   type="button"
                   onClick={handleDeleteEntry}
@@ -221,7 +221,7 @@ function Journal() {
               </div>
             </>
           ) : (
-            <div className="journal-empty">
+            <div className="empty-state">
               <p>Select an entry or create a new one.</p>
             </div>
           )}

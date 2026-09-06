@@ -90,7 +90,6 @@ function Notes() {
 
     if (!selectedNote) return;
 
-    // Don't make a request if nothing changed.
     if (
       title === selectedNote.title &&
       content === selectedNote.content
@@ -161,7 +160,7 @@ function Notes() {
 
   return (
     <section className="notes">
-      <div className="notes-header">
+      <div className="page-header">
         <h2>Notes</h2>
 
         <button type="button" onClick={handleNewNote}>
@@ -169,8 +168,8 @@ function Notes() {
         </button>
       </div>
 
-      <div className="notes-content">
-        <aside className="notes-list">
+      <div className="editor-layout">
+        <aside className="editor-sidebar">
           <input
             type="search"
             value={search}
@@ -198,7 +197,7 @@ function Notes() {
           )}
         </aside>
 
-        <div className="note-editor">
+        <div className="editor-content">
           {selectedNoteId ? (
             <>
               <input
@@ -216,7 +215,7 @@ function Notes() {
                 placeholder="Write your note..."
               />
 
-              <div className="note-actions">
+              <div className="editor-actions">
                 <button
                   type="button"
                   onClick={handleDeleteNote}
@@ -226,7 +225,7 @@ function Notes() {
               </div>
             </>
           ) : (
-            <div className="notes-empty-state">
+            <div className="empty-state">
               <p>Select a note or create a new one.</p>
             </div>
           )}

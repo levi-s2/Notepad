@@ -196,52 +196,55 @@ function Tasks() {
   }
 
   function handleDrop(event, targetTask, taskList) {
-  event.preventDefault();
+    event.preventDefault();
 
-  const draggedId = Number(
-    event.dataTransfer.getData("text/plain"),
-  );
-
-  if (!draggedId || draggedId === targetTask.id) {
-    setDraggedTaskId(null);
-    return;
-  }
-
-  const draggedIndex = taskList.findIndex(
-    (task) => task.id === draggedId,
-  );
-
-  const targetIndex = taskList.findIndex(
-    (task) => task.id === targetTask.id,
-  );
-
-  if (draggedIndex === -1 || targetIndex === -1) {
-    setDraggedTaskId(null);
-    return;
-  }
-
-  const reorderedTasks = [...taskList];
-  const [draggedTask] = reorderedTasks.splice(draggedIndex, 1);
-
-  reorderedTasks.splice(targetIndex, 0, draggedTask);
-
-  const updatedTasks = reorderedTasks.map((task, index) => ({
-    ...task,
-    position: index,
-  }));
-
-  setTasks((currentTasks) => {
-    const otherTasks = currentTasks.filter(
-      (task) => task.isDaily !== targetTask.isDaily,
+    const draggedId = Number(
+      event.dataTransfer.getData("text/plain"),
     );
 
-    return [...otherTasks, ...updatedTasks];
-  });
+    if (!draggedId || draggedId === targetTask.id) {
+      setDraggedTaskId(null);
+      return;
+    }
 
-  saveTaskOrder(updatedTasks);
+    const draggedIndex = taskList.findIndex(
+      (task) => task.id === draggedId,
+    );
 
-  setDraggedTaskId(null);
-}
+    const targetIndex = taskList.findIndex(
+      (task) => task.id === targetTask.id,
+    );
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedTaskId(null);
+      return;
+    }
+
+    const reorderedTasks = [...taskList];
+    const [draggedTask] = reorderedTasks.splice(
+      draggedIndex,
+      1,
+    );
+
+    reorderedTasks.splice(targetIndex, 0, draggedTask);
+
+    const updatedTasks = reorderedTasks.map((task, index) => ({
+      ...task,
+      position: index,
+    }));
+
+    setTasks((currentTasks) => {
+      const otherTasks = currentTasks.filter(
+        (task) => task.isDaily !== targetTask.isDaily,
+      );
+
+      return [...otherTasks, ...updatedTasks];
+    });
+
+    saveTaskOrder(updatedTasks);
+
+    setDraggedTaskId(null);
+  }
 
   function renderTask(task, taskList) {
     return (
@@ -295,16 +298,16 @@ function Tasks() {
 
   return (
     <section className="tasks">
-      <div className="tasks-header">
+      <div className="page-header">
         <h2>Tasks</h2>
       </div>
 
-      <div className="task-section">
+      <div className="content-section">
         <h3>Daily Tasks</h3>
 
         <div className="task-list">
           {dailyTasks.length === 0 ? (
-            <p className="empty-tasks">No daily tasks.</p>
+            <p className="empty-state">No daily tasks.</p>
           ) : (
             dailyTasks.map((task) =>
               renderTask(task, dailyTasks),
@@ -313,7 +316,7 @@ function Tasks() {
         </div>
 
         <form
-          className="task-form daily-task-form"
+          className="task-form"
           onSubmit={handleAddDailyTask}
         >
           <input
@@ -329,7 +332,7 @@ function Tasks() {
         </form>
       </div>
 
-      <div className="task-section">
+      <div className="content-section">
         <h3>Tasks</h3>
 
         <form className="task-form" onSubmit={handleAddTask}>
@@ -347,7 +350,7 @@ function Tasks() {
 
         <div className="task-list">
           {regularTasks.length === 0 ? (
-            <p className="empty-tasks">No tasks.</p>
+            <p className="empty-state">No tasks.</p>
           ) : (
             regularTasks.map((task) =>
               renderTask(task, regularTasks),

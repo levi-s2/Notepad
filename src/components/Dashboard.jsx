@@ -49,8 +49,17 @@ function Dashboard() {
     loadDashboardData();
   }, [location.pathname]);
 
-  const activeTasks = tasks.filter((task) => !task.completed);
-  const completedTasks = tasks.filter((task) => task.completed);
+  const dailyTasks = tasks
+    .filter((task) => task.isDaily)
+    .sort((a, b) => a.position - b.position);
+
+  const activeTasks = tasks.filter(
+    (task) => !task.completed && !task.isDaily,
+  );
+
+  const completedTasks = tasks.filter(
+    (task) => task.completed && !task.isDaily,
+  );
 
   const recentJournalEntries = journalEntries.slice(0, 3);
   const recentNotes = notes.slice(0, 3);
@@ -74,89 +83,129 @@ function Dashboard() {
             {loading ? (
               <p>Loading...</p>
             ) : (
-              <div className="dashboard-grid">
-                <section className="dashboard-card tasks-card">
-                  <div className="dashboard-card-header">
-                    <h3>Tasks</h3>
+              <>
+                <section className="card dashboard-daily-tasks">
+                  <div className="card-header">
+                    <h3>Daily Tasks</h3>
                     <Link to="/tasks">View all</Link>
                   </div>
 
-                  <div className="task-summary">
-                    <div>
-                      <strong>{activeTasks.length}</strong>
-                      <span>Active</span>
-                    </div>
-
-                    <div>
-                      <strong>{completedTasks.length}</strong>
-                      <span>Completed</span>
-                    </div>
-                  </div>
-
-                  {activeTasks.length > 0 ? (
-                    <div className="dashboard-task-list">
-                      {activeTasks.slice(0, 3).map((task) => (
-                        <p key={task.id}>{task.title}</p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="dashboard-empty">
-                      No active tasks.
-                    </p>
-                  )}
-                </section>
-
-                <section className="dashboard-card">
-                  <div className="dashboard-card-header">
-                    <h3>Recent Journal</h3>
-                    <Link to="/journal">View all</Link>
-                  </div>
-
-                  {recentJournalEntries.length > 0 ? (
-                    <div className="dashboard-list">
-                      {recentJournalEntries.map((entry) => (
-                        <Link
-                          key={entry.id}
-                          to="/journal"
-                          className="dashboard-list-item"
+                  {dailyTasks.length > 0 ? (
+                    <div className="daily-task-grid">
+                      {dailyTasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className={
+                            task.completed
+                              ? "dashboard-daily-task completed"
+                              : "dashboard-daily-task"
+                          }
                         >
-                          <strong>{entry.title}</strong>
-                          <span>{entry.date}</span>
-                        </Link>
+                          <span
+                            className={
+                              task.completed
+                                ? "daily-task-check checked"
+                                : "daily-task-check"
+                            }
+                          >
+                            {task.completed ? "✓" : ""}
+                          </span>
+
+                          <span>{task.title}</span>
+                        </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="dashboard-empty">
-                      No journal entries yet.
+                    <p className="empty-state">
+                      No daily tasks.
                     </p>
                   )}
                 </section>
 
-                <section className="dashboard-card">
-                  <div className="dashboard-card-header">
-                    <h3>Recent Notes</h3>
-                    <Link to="/notes">View all</Link>
-                  </div>
-
-                  {recentNotes.length > 0 ? (
-                    <div className="dashboard-list">
-                      {recentNotes.map((note) => (
-                        <Link
-                          key={note.id}
-                          to="/notes"
-                          className="dashboard-list-item"
-                        >
-                          <strong>{note.title}</strong>
-                        </Link>
-                      ))}
+                <div className="dashboard-grid">
+                  <section className="card dashboard-card-wide tasks-card">
+                    <div className="card-header">
+                      <h3>Tasks</h3>
+                      <Link to="/tasks">View all</Link>
                     </div>
-                  ) : (
-                    <p className="dashboard-empty">
-                      No notes yet.
-                    </p>
-                  )}
-                </section>
-              </div>
+
+                    <div className="task-summary">
+                      <div>
+                        <strong>{activeTasks.length}</strong>
+                        <span>Active</span>
+                      </div>
+
+                      <div>
+                        <strong>{completedTasks.length}</strong>
+                        <span>Completed</span>
+                      </div>
+                    </div>
+
+                    {activeTasks.length > 0 ? (
+                      <div className="dashboard-task-list">
+                        {activeTasks.slice(0, 3).map((task) => (
+                          <p key={task.id}>{task.title}</p>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="empty-state">
+                        No active tasks.
+                      </p>
+                    )}
+                  </section>
+
+                  <section className="card">
+                    <div className="card-header">
+                      <h3>Recent Journal</h3>
+                      <Link to="/journal">View all</Link>
+                    </div>
+
+                    {recentJournalEntries.length > 0 ? (
+                      <div className="dashboard-list">
+                        {recentJournalEntries.map((entry) => (
+                          <Link
+                            key={entry.id}
+                            to="/journal"
+                            className="dashboard-list-item"
+                          >
+                            <strong>{entry.title}</strong>
+                            <span>{entry.date}</span>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="empty-state">
+                        No journal entries yet.
+                      </p>
+                    )}
+                  </section>
+
+                  <section className="card">
+                    <div className="card-header">
+                      <h3>Recent Notes</h3>
+                      <Link to="/notes">View all</Link>
+                    </div>
+
+                    {recentNotes.length > 0 ? (
+                      <div className="dashboard-list">
+                        {recentNotes.map((note) => (
+                          <Link
+                            key={note.id}
+                            to="/notes"
+                            className="dashboard-list-item"
+                          >
+                            <strong>{note.title}</strong>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="empty-state">
+                        No notes yet.
+                      </p>
+                    )}
+                  </section>
+                </div>
+              </>
             )}
           </section>
         ) : (
