@@ -530,3 +530,72 @@ body {
     grid-column: span 1;
   }
 }
+.task-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px;
+  border-bottom: 1px solid #eee;
+  cursor: grab;
+}
+
+.task-item:active {
+  cursor: grabbing;
+}
+
+.task-item.dragging {
+  opacity: 0.5;
+}
+
+.task-drag-handle {
+  color: #aaa;
+  font-size: 16px;
+  letter-spacing: -3px;
+  cursor: grab;
+  user-select: none;
+}
+
+.task-item label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.task-item input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.task-item span {
+  font-size: 16px;
+}
+
+.task-item span.completed {
+  color: #999;
+  text-decoration: line-through;
+}
+
+.task-item button {
+  border: 0;
+  background: transparent;
+  color: #999;
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.task-item:hover button {
+  opacity: 1;
+}
+
+.task-item button:hover {
+  color: #222;
+}

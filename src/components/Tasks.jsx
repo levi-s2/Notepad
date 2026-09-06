@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 function Tasks() {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
+  const [newDailyTask, setNewDailyTask] = useState("");
   const [loading, setLoading] = useState(true);
+  const [draggedTaskId, setDraggedTaskId] = useState(null);
 
   useEffect(() => {
     async function loadTasks() {
@@ -27,8 +29,13 @@ function Tasks() {
     loadTasks();
   }, []);
 
-  const activeTasks = tasks.filter((task) => !task.completed);
-  const completedTasks = tasks.filter((task) => task.completed);
+  const dailyTasks = tasks
+    .filter((task) => task.isDaily)
+    .sort((a, b) => a.position - b.position);
+
+  const regularTasks = tasks
+    .filter((task) => !task.isDaily)
+    .sort((a, b) => a.position - b.position);
 
   async function handleAddTask(event) {
     event.preventDefault();
@@ -43,7 +50,10 @@ function Tasks() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({
+          title,
+          isDaily: false,
+        }),
       });
 
       if (!response.ok) {
@@ -53,11 +63,47 @@ function Tasks() {
       const createdTask = await response.json();
 
       setTasks((currentTasks) => [
-        createdTask,
         ...currentTasks,
+        createdTask,
       ]);
 
       setNewTask("");
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  async function handleAddDailyTask(event) {
+    event.preventDefault();
+
+    const title = newDailyTask.trim();
+
+    if (!title) return;
+
+    try {
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          isDaily: true,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create daily task.");
+      }
+
+      const createdTask = await response.json();
+
+      setTasks((currentTasks) => [
+        ...currentTasks,
+        createdTask,
+      ]);
+
+      setNewDailyTask("");
     } catch (error) {
       console.error(error);
     }
@@ -112,9 +158,114 @@ function Tasks() {
     }
   }
 
-  function renderTask(task) {
+  async function saveTaskOrder(orderedTasks) {
+    const reorderedTasks = orderedTasks.map((task, index) => ({
+      id: task.id,
+      position: index,
+    }));
+
+    try {
+      const response = await fetch("/api/tasks/reorder", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          tasks: reorderedTasks,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save task order.");
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  function handleDragStart(event, taskId) {
+    setDraggedTaskId(taskId);
+
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", String(taskId));
+  }
+
+  function handleDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  function handleDrop(event, targetTask, taskList) {
+  event.preventDefault();
+
+  const draggedId = Number(
+    event.dataTransfer.getData("text/plain"),
+  );
+
+  if (!draggedId || draggedId === targetTask.id) {
+    setDraggedTaskId(null);
+    return;
+  }
+
+  const draggedIndex = taskList.findIndex(
+    (task) => task.id === draggedId,
+  );
+
+  const targetIndex = taskList.findIndex(
+    (task) => task.id === targetTask.id,
+  );
+
+  if (draggedIndex === -1 || targetIndex === -1) {
+    setDraggedTaskId(null);
+    return;
+  }
+
+  const reorderedTasks = [...taskList];
+  const [draggedTask] = reorderedTasks.splice(draggedIndex, 1);
+
+  reorderedTasks.splice(targetIndex, 0, draggedTask);
+
+  const updatedTasks = reorderedTasks.map((task, index) => ({
+    ...task,
+    position: index,
+  }));
+
+  setTasks((currentTasks) => {
+    const otherTasks = currentTasks.filter(
+      (task) => task.isDaily !== targetTask.isDaily,
+    );
+
+    return [...otherTasks, ...updatedTasks];
+  });
+
+  saveTaskOrder(updatedTasks);
+
+  setDraggedTaskId(null);
+}
+
+  function renderTask(task, taskList) {
     return (
-      <div className="task-item" key={task.id}>
+      <div
+        className={
+          draggedTaskId === task.id
+            ? "task-item dragging"
+            : "task-item"
+        }
+        key={task.id}
+        draggable
+        onDragStart={(event) =>
+          handleDragStart(event, task.id)
+        }
+        onDragOver={handleDragOver}
+        onDrop={(event) =>
+          handleDrop(event, task, taskList)
+        }
+        onDragEnd={() => setDraggedTaskId(null)}
+      >
+        <span className="task-drag-handle" aria-hidden="true">
+          ⋮⋮
+        </span>
+
         <label>
           <input
             type="checkbox"
@@ -148,34 +299,62 @@ function Tasks() {
         <h2>Tasks</h2>
       </div>
 
-      <form className="task-form" onSubmit={handleAddTask}>
-        <input
-          type="text"
-          value={newTask}
-          onChange={(event) => setNewTask(event.target.value)}
-          placeholder="Add a task..."
-        />
+      <div className="task-section">
+        <h3>Daily Tasks</h3>
 
-        <button type="submit">+</button>
-      </form>
+        <div className="task-list">
+          {dailyTasks.length === 0 ? (
+            <p className="empty-tasks">No daily tasks.</p>
+          ) : (
+            dailyTasks.map((task) =>
+              renderTask(task, dailyTasks),
+            )
+          )}
+        </div>
+
+        <form
+          className="task-form daily-task-form"
+          onSubmit={handleAddDailyTask}
+        >
+          <input
+            type="text"
+            value={newDailyTask}
+            onChange={(event) =>
+              setNewDailyTask(event.target.value)
+            }
+            placeholder="Add a daily task..."
+          />
+
+          <button type="submit">+</button>
+        </form>
+      </div>
 
       <div className="task-section">
         <h3>Tasks</h3>
 
-        {activeTasks.length === 0 ? (
-          <p className="empty-tasks">No tasks.</p>
-        ) : (
-          activeTasks.map(renderTask)
-        )}
-      </div>
+        <form className="task-form" onSubmit={handleAddTask}>
+          <input
+            type="text"
+            value={newTask}
+            onChange={(event) =>
+              setNewTask(event.target.value)
+            }
+            placeholder="Add a task..."
+          />
 
-      {completedTasks.length > 0 && (
-        <div className="task-section completed-section">
-          <h3>Completed</h3>
+          <button type="submit">+</button>
+        </form>
 
-          {completedTasks.map(renderTask)}
+        <div className="task-list">
+          {regularTasks.length === 0 ? (
+            <p className="empty-tasks">No tasks.</p>
+          ) : (
+            regularTasks.map((task) =>
+              renderTask(task, regularTasks),
+            )
+          )}
         </div>
-      )}
+      </div>
     </section>
   );
 }

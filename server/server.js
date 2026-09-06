@@ -137,139 +137,6 @@ app.listen(PORT, () => {
   console.log(`API running at http://localhost:${PORT}`);
 });
 
-app.get("/api/tasks", (req, res) => {
-  const tasks = db
-    .prepare(
-      `
-        SELECT
-          id,
-          title,
-          completed,
-          created_at AS createdAt,
-          updated_at AS updatedAt
-        FROM tasks
-        ORDER BY completed ASC, id DESC
-      `,
-    )
-    .all();
-
-  res.json(
-    tasks.map((task) => ({
-      ...task,
-      completed: Boolean(task.completed),
-    })),
-  );
-});
-
-app.post("/api/tasks", (req, res) => {
-  const { title } = req.body;
-
-  if (!title) {
-    return res.status(400).json({
-      error: "Title is required.",
-    });
-  }
-
-  const result = db
-    .prepare(
-      `
-        INSERT INTO tasks (title)
-        VALUES (?)
-      `,
-    )
-    .run(title);
-
-  const task = db
-    .prepare(
-      `
-        SELECT
-          id,
-          title,
-          completed,
-          created_at AS createdAt,
-          updated_at AS updatedAt
-        FROM tasks
-        WHERE id = ?
-      `,
-    )
-    .get(result.lastInsertRowid);
-
-  res.status(201).json({
-    ...task,
-    completed: Boolean(task.completed),
-  });
-});
-
-app.patch("/api/tasks/:id", (req, res) => {
-  const { id } = req.params;
-  const { title, completed } = req.body;
-
-  if (!title || typeof completed !== "boolean") {
-    return res.status(400).json({
-      error: "Title and completed state are required.",
-    });
-  }
-
-  const result = db
-    .prepare(
-      `
-        UPDATE tasks
-        SET
-          title = ?,
-          completed = ?,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `,
-    )
-    .run(title, completed ? 1 : 0, id);
-
-  if (result.changes === 0) {
-    return res.status(404).json({
-      error: "Task not found.",
-    });
-  }
-
-  const task = db
-    .prepare(
-      `
-        SELECT
-          id,
-          title,
-          completed,
-          created_at AS createdAt,
-          updated_at AS updatedAt
-        FROM tasks
-        WHERE id = ?
-      `,
-    )
-    .get(id);
-
-  res.json({
-    ...task,
-    completed: Boolean(task.completed),
-  });
-});
-
-app.delete("/api/tasks/:id", (req, res) => {
-  const { id } = req.params;
-
-  const result = db
-    .prepare(
-      `
-        DELETE FROM tasks
-        WHERE id = ?
-      `,
-    )
-    .run(id);
-
-  if (result.changes === 0) {
-    return res.status(404).json({
-      error: "Task not found.",
-    });
-  }
-
-  res.status(204).send();
-});
 app.get("/api/notes", (req, res) => {
   const notes = db
     .prepare(
@@ -387,6 +254,237 @@ app.delete("/api/notes/:id", (req, res) => {
   if (result.changes === 0) {
     return res.status(404).json({
       error: "Note not found.",
+    });
+  }
+
+  res.status(204).send();
+});
+
+app.get("/api/tasks", (req, res) => {
+  const today = new Date().toISOString().split("T")[0];
+
+  const tasks = db
+    .prepare(
+      `
+        SELECT
+          id,
+          title,
+          completed,
+          is_daily AS isDaily,
+          completed_date AS completedDate,
+          position,
+          created_at AS createdAt,
+          updated_at AS updatedAt
+        FROM tasks
+        ORDER BY is_daily DESC, position ASC, id DESC
+      `,
+    )
+    .all();
+
+  const formattedTasks = tasks.map((task) => ({
+    ...task,
+    isDaily: Boolean(task.isDaily),
+    completed: task.isDaily
+      ? task.completedDate === today
+      : Boolean(task.completed),
+  }));
+
+  res.json(formattedTasks);
+});
+
+app.post("/api/tasks", (req, res) => {
+  const { title, isDaily = false } = req.body;
+
+  if (!title) {
+    return res.status(400).json({
+      error: "Title is required.",
+    });
+  }
+
+  const result = db
+    .prepare(
+      `
+        INSERT INTO tasks (title, is_daily)
+        VALUES (?, ?)
+      `,
+    )
+    .run(title, isDaily ? 1 : 0);
+
+  const task = db
+    .prepare(
+      `
+        SELECT
+          id,
+          title,
+          completed,
+          is_daily AS isDaily,
+          completed_date AS completedDate,
+          position,
+          created_at AS createdAt,
+          updated_at AS updatedAt
+        FROM tasks
+        WHERE id = ?
+      `,
+    )
+    .get(result.lastInsertRowid);
+
+  res.status(201).json({
+    ...task,
+    isDaily: Boolean(task.isDaily),
+    completed: Boolean(task.completed),
+  });
+});
+
+/*
+ * IMPORTANT:
+ * Keep /reorder BEFORE /:id.
+ */
+app.patch("/api/tasks/reorder", (req, res) => {
+  const { tasks } = req.body;
+
+  if (!Array.isArray(tasks)) {
+    return res.status(400).json({
+      error: "Tasks must be an array.",
+    });
+  }
+
+  const updatePosition = db.prepare(
+    `
+      UPDATE tasks
+      SET
+        position = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `,
+  );
+
+  const updatePositions = db.transaction((tasks) => {
+    for (const task of tasks) {
+      if (
+        typeof task.id !== "number" ||
+        typeof task.position !== "number"
+      ) {
+        throw new Error("Invalid task data.");
+      }
+
+      updatePosition.run(task.position, task.id);
+    }
+  });
+
+  try {
+    updatePositions(tasks);
+  } catch (error) {
+    console.error(error);
+
+    return res.status(400).json({
+      error: "Failed to update task order.",
+    });
+  }
+
+  res.status(204).send();
+});
+
+app.patch("/api/tasks/:id", (req, res) => {
+  const { id } = req.params;
+  const { title, completed } = req.body;
+
+  if (!title || typeof completed !== "boolean") {
+    return res.status(400).json({
+      error: "Title and completed state are required.",
+    });
+  }
+
+  const task = db
+    .prepare(
+      `
+        SELECT
+          id,
+          title,
+          completed,
+          is_daily AS isDaily,
+          completed_date AS completedDate
+        FROM tasks
+        WHERE id = ?
+      `,
+    )
+    .get(id);
+
+  if (!task) {
+    return res.status(404).json({
+      error: "Task not found.",
+    });
+  }
+
+  if (task.isDaily) {
+    const today = new Date().toISOString().split("T")[0];
+
+    db.prepare(
+      `
+        UPDATE tasks
+        SET
+          title = ?,
+          completed_date = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+    ).run(title, completed ? today : null, id);
+  } else {
+    db.prepare(
+      `
+        UPDATE tasks
+        SET
+          title = ?,
+          completed = ?,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+    ).run(title, completed ? 1 : 0, id);
+  }
+
+  const updatedTask = db
+    .prepare(
+      `
+        SELECT
+          id,
+          title,
+          completed,
+          is_daily AS isDaily,
+          completed_date AS completedDate,
+          position,
+          created_at AS createdAt,
+          updated_at AS updatedAt
+        FROM tasks
+        WHERE id = ?
+      `,
+    )
+    .get(id);
+
+  const today = new Date().toISOString().split("T")[0];
+
+  res.json({
+    ...updatedTask,
+    isDaily: Boolean(updatedTask.isDaily),
+    completed: updatedTask.isDaily
+      ? updatedTask.completedDate === today
+      : Boolean(updatedTask.completed),
+  });
+});
+
+app.delete("/api/tasks/:id", (req, res) => {
+  const { id } = req.params;
+
+  const result = db
+    .prepare(
+      `
+        DELETE FROM tasks
+        WHERE id = ?
+      `,
+    )
+    .run(id);
+
+  if (result.changes === 0) {
+    return res.status(404).json({
+      error: "Task not found.",
     });
   }
 
