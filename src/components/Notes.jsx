@@ -1,86 +1,162 @@
-import { useState } from "react";
-
-const initialNotes = [
-  {
-    id: 1,
-    title: "Project Ideas",
-    content:
-      "Ideas for future projects and things I would like to build.",
-  },
-  {
-    id: 2,
-    title: "Linux Setup",
-    content:
-      "Things I want to configure and improve on my Linux machine.",
-  },
-  {
-    id: 3,
-    title: "Books to Read",
-    content:
-      "A list of books I want to read when I have some free time.",
-  },
-  {
-    id: 4,
-    title: "Random Thoughts",
-    content:
-      "A place to write down random ideas before I forget them.",
-  },
-];
+import { useEffect, useState } from "react";
 
 function Notes() {
-  const [notes, setNotes] = useState(initialNotes);
-  const [selectedNoteId, setSelectedNoteId] = useState(initialNotes[0].id);
+  const [notes, setNotes] = useState([]);
+  const [selectedNoteId, setSelectedNoteId] = useState(null);
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const selectedNote = notes.find(
-    (note) => note.id === selectedNoteId,
-  );
+  useEffect(() => {
+    async function loadNotes() {
+      try {
+        const response = await fetch("/api/notes");
+
+        if (!response.ok) {
+          throw new Error("Failed to load notes.");
+        }
+
+        const data = await response.json();
+
+        setNotes(data);
+        setSelectedNoteId(data[0]?.id ?? null);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadNotes();
+  }, []);
+
+  useEffect(() => {
+    const selectedNote = notes.find(
+      (note) => note.id === selectedNoteId,
+    );
+
+    if (selectedNote) {
+      setTitle(selectedNote.title);
+      setContent(selectedNote.content);
+    } else {
+      setTitle("");
+      setContent("");
+    }
+  }, [selectedNoteId, notes]);
 
   const filteredNotes = notes.filter((note) =>
     note.title.toLowerCase().includes(search.toLowerCase()),
   );
 
-  function handleNewNote() {
+  async function handleNewNote() {
     const newNote = {
-      id: Date.now(),
       title: "Untitled Note",
       content: "",
     };
 
-    setNotes((currentNotes) => [newNote, ...currentNotes]);
-    setSelectedNoteId(newNote.id);
+    try {
+      const response = await fetch("/api/notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newNote),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create note.");
+      }
+
+      const createdNote = await response.json();
+
+      setNotes((currentNotes) => [
+        createdNote,
+        ...currentNotes,
+      ]);
+
+      setSelectedNoteId(createdNote.id);
+    } catch (error) {
+      console.error(error);
+    }
   }
 
-  function handleTitleChange(event) {
-    const title = event.target.value;
+  async function saveNote() {
+    if (!selectedNoteId) return;
 
-    setNotes((currentNotes) =>
-      currentNotes.map((note) =>
-        note.id === selectedNoteId ? { ...note, title } : note,
-      ),
+    const selectedNote = notes.find(
+      (note) => note.id === selectedNoteId,
     );
+
+    if (!selectedNote) return;
+
+    // Don't make a request if nothing changed.
+    if (
+      title === selectedNote.title &&
+      content === selectedNote.content
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/notes/${selectedNoteId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title,
+            content,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to update note.");
+      }
+
+      const savedNote = await response.json();
+
+      setNotes((currentNotes) =>
+        currentNotes.map((note) =>
+          note.id === savedNote.id ? savedNote : note,
+        ),
+      );
+    } catch (error) {
+      console.error(error);
+    }
   }
 
-  function handleContentChange(event) {
-    const content = event.target.value;
+  async function handleDeleteNote() {
+    if (!selectedNoteId) return;
 
-    setNotes((currentNotes) =>
-      currentNotes.map((note) =>
-        note.id === selectedNoteId ? { ...note, content } : note,
-      ),
-    );
+    try {
+      const response = await fetch(
+        `/api/notes/${selectedNoteId}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete note.");
+      }
+
+      const remainingNotes = notes.filter(
+        (note) => note.id !== selectedNoteId,
+      );
+
+      setNotes(remainingNotes);
+      setSelectedNoteId(remainingNotes[0]?.id ?? null);
+    } catch (error) {
+      console.error(error);
+    }
   }
 
-  function handleDeleteNote() {
-    setNotes((currentNotes) =>
-      currentNotes.filter((note) => note.id !== selectedNoteId),
-    );
-
-    const remainingNotes = notes.filter(
-      (note) => note.id !== selectedNoteId,
-    );
-
-    setSelectedNoteId(remainingNotes[0]?.id ?? null);
+  if (loading) {
+    return <section className="notes">Loading...</section>;
   }
 
   return (
@@ -123,23 +199,28 @@ function Notes() {
         </aside>
 
         <div className="note-editor">
-          {selectedNote ? (
+          {selectedNoteId ? (
             <>
               <input
                 type="text"
-                value={selectedNote.title}
-                onChange={handleTitleChange}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                onBlur={saveNote}
                 placeholder="Note title"
               />
 
               <textarea
-                value={selectedNote.content}
-                onChange={handleContentChange}
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
+                onBlur={saveNote}
                 placeholder="Write your note..."
               />
 
               <div className="note-actions">
-                <button type="button" onClick={handleDeleteNote}>
+                <button
+                  type="button"
+                  onClick={handleDeleteNote}
+                >
                   Delete
                 </button>
               </div>

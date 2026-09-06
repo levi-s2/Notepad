@@ -395,3 +395,138 @@ body {
   flex: 1;
   min-width: 0;
 }
+.dashboard {
+  width: 100%;
+  max-width: 1100px;
+}
+
+.dashboard-intro {
+  margin-bottom: 32px;
+}
+
+.dashboard-intro h2 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+
+.dashboard-intro p {
+  margin: 0;
+  color: #777;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.dashboard-card {
+  padding: 24px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.dashboard-card:first-child {
+  grid-column: span 2;
+}
+
+.dashboard-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.dashboard-card-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.dashboard-card-header a {
+  color: #777;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.dashboard-card-header a:hover {
+  color: #222;
+}
+
+.task-summary {
+  display: flex;
+  gap: 48px;
+  margin-bottom: 20px;
+}
+
+.task-summary div {
+  display: flex;
+  flex-direction: column;
+}
+
+.task-summary strong {
+  font-size: 28px;
+}
+
+.task-summary span {
+  margin-top: 4px;
+  color: #777;
+  font-size: 14px;
+}
+
+.dashboard-task-list {
+  border-top: 1px solid #eee;
+}
+
+.dashboard-task-list p {
+  margin: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.dashboard-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+  color: #222;
+  text-decoration: none;
+}
+
+.dashboard-list-item:first-child {
+  padding-top: 0;
+}
+
+.dashboard-list-item:last-child {
+  border-bottom: 0;
+}
+
+.dashboard-list-item:hover strong {
+  text-decoration: underline;
+}
+
+.dashboard-list-item span {
+  color: #777;
+  font-size: 14px;
+}
+
+.dashboard-empty {
+  margin: 0;
+  color: #999;
+}
+
+@media (max-width: 700px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-card:first-child {
+    grid-column: span 1;
+  }
+}

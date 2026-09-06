@@ -1,78 +1,115 @@
-import { useState } from "react";
-
-const initialTasks = [
-  {
-    id: 1,
-    title: "Finish Notepad",
-    completed: false,
-  },
-  {
-    id: 2,
-    title: "Work on portfolio",
-    completed: false,
-  },
-  {
-    id: 3,
-    title: "Read",
-    completed: false,
-  },
-  {
-    id: 4,
-    title: "Clean apartment",
-    completed: false,
-  },
-  {
-    id: 5,
-    title: "Buy groceries",
-    completed: true,
-  },
-  {
-    id: 6,
-    title: "Send email",
-    completed: true,
-  },
-];
+import { useEffect, useState } from "react";
 
 function Tasks() {
-  const [tasks, setTasks] = useState(initialTasks);
+  const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadTasks() {
+      try {
+        const response = await fetch("/api/tasks");
+
+        if (!response.ok) {
+          throw new Error("Failed to load tasks.");
+        }
+
+        const data = await response.json();
+
+        setTasks(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTasks();
+  }, []);
 
   const activeTasks = tasks.filter((task) => !task.completed);
   const completedTasks = tasks.filter((task) => task.completed);
 
-  function handleAddTask(event) {
+  async function handleAddTask(event) {
     event.preventDefault();
 
     const title = newTask.trim();
 
-    if (!title) {
-      return;
+    if (!title) return;
+
+    try {
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ title }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create task.");
+      }
+
+      const createdTask = await response.json();
+
+      setTasks((currentTasks) => [
+        createdTask,
+        ...currentTasks,
+      ]);
+
+      setNewTask("");
+    } catch (error) {
+      console.error(error);
     }
-
-    const task = {
-      id: Date.now(),
-      title,
-      completed: false,
-    };
-
-    setTasks((currentTasks) => [...currentTasks, task]);
-    setNewTask("");
   }
 
-  function handleToggleTask(id) {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === id
-          ? { ...task, completed: !task.completed }
-          : task,
-      ),
-    );
+  async function handleToggleTask(task) {
+    try {
+      const response = await fetch(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: task.title,
+          completed: !task.completed,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update task.");
+      }
+
+      const updatedTask = await response.json();
+
+      setTasks((currentTasks) =>
+        currentTasks.map((currentTask) =>
+          currentTask.id === updatedTask.id
+            ? updatedTask
+            : currentTask,
+        ),
+      );
+    } catch (error) {
+      console.error(error);
+    }
   }
 
-  function handleDeleteTask(id) {
-    setTasks((currentTasks) =>
-      currentTasks.filter((task) => task.id !== id),
-    );
+  async function handleDeleteTask(id) {
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete task.");
+      }
+
+      setTasks((currentTasks) =>
+        currentTasks.filter((task) => task.id !== id),
+      );
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   function renderTask(task) {
@@ -82,7 +119,7 @@ function Tasks() {
           <input
             type="checkbox"
             checked={task.completed}
-            onChange={() => handleToggleTask(task.id)}
+            onChange={() => handleToggleTask(task)}
           />
 
           <span className={task.completed ? "completed" : ""}>
@@ -99,6 +136,10 @@ function Tasks() {
         </button>
       </div>
     );
+  }
+
+  if (loading) {
+    return <section className="tasks">Loading...</section>;
   }
 
   return (
